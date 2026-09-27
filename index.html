@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="A lightweight, browser-based macOS-style desktop simulator." />
+  <title>macOS Web Simulator</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --glass: rgba(30, 30, 35, .72);
+      --border: rgba(255, 255, 255, .18);
+      --text: #f5f5f7;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+    body {
+      color: var(--text);
+      font: 14px -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      user-select: none;
+      background: #1b2541;
+    }
+
+    .desktop {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 18% 18%, rgba(84, 132, 210, .55), transparent 28%),
+        radial-gradient(circle at 75% 12%, rgba(182, 108, 196, .5), transparent 30%),
+        linear-gradient(135deg, #12294c 0%, #584a79 48%, #c276a8 100%);
+    }
+
+    .menu-bar {
+      position: fixed;
+      z-index: 100;
+      top: 0;
+      left: 0;
+      right: 0;
+      display: flex;
+      align-items: center;
+      height: 30px;
+      padding: 0 14px;
+      gap: 18px;
+      color: #fff;
+      background: rgba(18, 18, 22, .58);
+      backdrop-filter: blur(18px);
+      font-size: 13px;
+    }
+    .menu-left, .menu-right { display: flex; align-items: center; gap: 16px; }
+    .menu-right { margin-left: auto; gap: 13px; }
+    .apple { font-size: 17px; line-height: 1; }
+    .menu-item { font-weight: 600; }
+    .menu-item.light { font-weight: 400; }
+    #clock { min-width: 138px; text-align: right; }
+
+    .desktop-icons {
+      position: absolute;
+      top: 54px;
+      right: 24px;
+      display: grid;
+      gap: 22px;
+      width: 82px;
+      text-align: center;
+    }
+    .desktop-icon { cursor: pointer; text-shadow: 0 1px 3px #000; }
+    .desktop-icon .icon { display: block; font-size: 42px; margin-bottom: 4px; }
+    .desktop-icon span:last-child { font-size: 12px; }
+
+    .window {
+      position: absolute;
+      z-index: 2;
+      top: 16%;
+      left: 18%;
+      width: min(680px, 72vw);
+      min-width: 310px;
+      height: min(440px, 62vh);
+      min-height: 230px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(35, 35, 40, .82);
+      box-shadow: 0 25px 70px rgba(0, 0, 0, .38), 0 0 0 1px rgba(0,0,0,.2);
+      backdrop-filter: blur(28px) saturate(130%);
+    }
+    .window.hidden { display: none; }
+    .title-bar {
+      display: flex;
+      align-items: center;
+      height: 42px;
+      padding: 0 14px;
+      background: rgba(48, 48, 54, .75);
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      cursor: grab;
+    }
+    .traffic-lights { display: flex; gap: 8px; }
+    .traffic-lights button {
+      width: 13px; height: 13px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+    }
+    .close { background: #ff5f57; } .minimize { background: #febc2e; } .maximize { background: #28c840; }
+    .window-title { flex: 1; text-align: center; font-weight: 600; margin-right: 61px; }
+    .window-content { height: calc(100% - 42px); padding: 25px; overflow: auto; }
+
+    .finder-layout { display: flex; height: 100%; margin: -25px; }
+    .sidebar { width: 170px; padding: 20px 12px; background: rgba(20,20,25,.35); border-right: 1px solid var(--border); }
+    .sidebar h4 { margin: 0 10px 9px; color: #aaa; font-size: 11px; text-transform: uppercase; }
+    .sidebar p { margin: 3px 0; padding: 7px 10px; border-radius: 6px; }
+    .sidebar p.active, .sidebar p:hover { background: rgba(80, 145, 255, .45); }
+    .files { flex: 1; padding: 24px; }
+    .files h2 { margin-top: 0; font-size: 18px; }
+    .file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 22px; }
+    .file { text-align: center; padding: 8px; border-radius: 8px; cursor: pointer; }
+    .file:hover { background: rgba(255,255,255,.12); }
+    .file .file-icon { display: block; font-size: 40px; margin-bottom: 7px; }
+
+    .welcome { text-align: center; max-width: 460px; margin: 15px auto; }
+    .welcome h1 { font-size: 31px; margin: 0 0 10px; }
+    .welcome p { color: #d2d2d7; line-height: 1.6; }
+    .button { border: 0; border-radius: 7px; padding: 9px 16px; color: white; background: #147ef5; cursor: pointer; }
+    .button:hover { background: #3190ff; }
+
+    .dock {
+      position: fixed;
+      z-index: 100;
+      bottom: 12px;
+      left: 50%;
+      display: flex;
+      align-items: end;
+      gap: 8px;
+      padding: 7px 10px;
+      transform: translateX(-50%);
+      border: 1px solid rgba(255,255,255,.25);
+      border-radius: 18px;
+      background: rgba(35, 35, 40, .55);
+      box-shadow: 0 8px 30px rgba(0,0,0,.32);
+      backdrop-filter: blur(22px);
+    }
+    .dock button { width: 52px; height: 52px; padding: 0; border: 0; border-radius: 12px; background: transparent; font-size: 34px; cursor: pointer; transition: transform .15s; }
+    .dock button:hover { transform: translateY(-9px) scale(1.13); }
+    .dock .divider { width: 1px; height: 42px; margin: 0 3px; background: rgba(255,255,255,.25); }
+    .tooltip { position: fixed; bottom: 86px; left: 50%; padding: 5px 9px; border-radius: 6px; background: rgba(20,20,20,.85); opacity: 0; pointer-events: none; transform: translateX(-50%); transition: opacity .15s; }
+  </style>
+</head>
+<body>
+  <main class="desktop" aria-label="macOS-style desktop">
+    <header class="menu-bar">
+      <div class="menu-left"><span class="apple" aria-label="Apple menu">●</span><span class="menu-item">Finder</span><span class="menu-item light">File</span><span class="menu-item light">Edit</span><span class="menu-item light">View</span><span class="menu-item light">Window</span><span class="menu-item light">Help</span></div>
+      <div class="menu-right"><span>⌁</span><span>⌁</span><span>▮▮</span><span>100%</span><span id="clock"></span></div>
+    </header>
+
+    <section class="desktop-icons" aria-label="Desktop items">
+      <div class="desktop-icon" data-open="finder"><span class="icon">💾</span><span>Macintosh HD</span></div>
+      <div class="desktop-icon" data-open="finder"><span class="icon">📁</span><span>Projects</span></div>
+    </section>
+
+    <section class="window" id="welcome-window" aria-label="Welcome window">
+      <div class="title-bar"><div class="traffic-lights"><button class="close" aria-label="Close"></button><button class="minimize" aria-label="Minimize"></button><button class="maximize" aria-label="Maximize"></button></div><div class="window-title">Welcome</div></div>
+      <div class="window-content welcome"><div style="font-size:58px"></div><h1>Welcome to macOS Web</h1><p>This is a lightweight visual simulator built with HTML, CSS, and JavaScript. Explore the desktop, open Finder, and try the dock icons.</p><button class="button" data-open="finder">Open Finder</button></div>
+    </section>
+
+    <section class="window hidden" id="finder-window" aria-label="Finder window">
+      <div class="title-bar"><div class="traffic-lights"><button class="close" aria-label="Close"></button><button class="minimize" aria-label="Minimize"></button><button class="maximize" aria-label="Maximize"></button></div><div class="window-title">Finder</div></div>
+      <div class="window-content finder-layout"><aside class="sidebar"><h4>Favorites</h4><p class="active">⌂ Home</p><p>▣ Desktop</p><p>▤ Documents</p><p>⌁ Downloads</p><h4 style="margin-top:25px">Locations</h4><p>💾 Macintosh HD</p></aside><div class="files"><h2>Home</h2><div class="file-grid"><div class="file"><span class="file-icon">📁</span>Documents</div><div class="file"><span class="file-icon">📁</span>Downloads</div><div class="file"><span class="file-icon">📁</span>Pictures</div><div class="file"><span class="file-icon">📄</span>README.txt</div></div></div></div>
+    </section>
+
+    <nav class="dock" aria-label="Dock"><button data-open="finder" title="Finder">😊</button><button title="Safari">🧭</button><button title="Mail">✉️</button><button title="Calendar">📅</button><button title="Notes">📝</button><span class="divider"></span><button title="Trash">🗑️</button></nav>
+    <div class="tooltip" id="tooltip"></div>
+  </main>
+  <script>
+    const clock = document.querySelector('#clock');
+    const updateClock = () => { clock.textContent = new Intl.DateTimeFormat([], { weekday: 'short', hour: 'numeric', minute: '2-digit' }).format(new Date()); };
+    updateClock(); setInterval(updateClock, 30000);
+
+    const welcome = document.querySelector('#welcome-window');
+    const finder = document.querySelector('#finder-window');
+    let topZ = 3;
+    function openWindow(name) { const target = name === 'finder' ? finder : welcome; target.classList.remove('hidden'); target.style.zIndex = ++topZ; }
+    document.querySelectorAll('[data-open]').forEach(el => el.addEventListener('click', () => openWindow(el.dataset.open)));
+    document.querySelectorAll('.close').forEach(button => button.addEventListener('click', e => e.target.closest('.window').classList.add('hidden')));
+    document.querySelectorAll('.minimize').forEach(button => button.addEventListener('click', e => e.target.closest('.window').classList.add('hidden')));
+    document.querySelectorAll('.window').forEach(win => win.addEventListener('mousedown', () => win.style.zIndex = ++topZ));
+
+    document.querySelectorAll('.title-bar').forEach(bar => {
+      let dragging = false, offsetX = 0, offsetY = 0;
+      bar.addEventListener('pointerdown', e => { dragging = true; const win = bar.closest('.window'); const rect = win.getBoundingClientRect(); offsetX = e.clientX - rect.left; offsetY = e.clientY - rect.top; bar.setPointerCapture(e.pointerId); });
+      bar.addEventListener('pointermove', e => { if (!dragging) return; const win = bar.closest('.window'); win.style.left = Math.max(0, e.clientX - offsetX) + 'px'; win.style.top = Math.max(31, e.clientY - offsetY) + 'px'; });
+      bar.addEventListener('pointerup', () => dragging = false);
+    });
+
+    document.querySelectorAll('.dock button').forEach(button => button.addEventListener('click', () => { if (button.dataset.open) openWindow(button.dataset.open); }));
+  </script>
+</body>
+</html>
